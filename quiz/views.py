@@ -10,6 +10,7 @@ from rest_framework.parsers import MultiPartParser, FileUploadParser
 # Create your views here.
 from rest_framework.generics import RetrieveAPIView
 from django.db.models import Count, Sum, Avg
+from django.db.models.functions import TruncMonth
 class QuizView(APIView):
     def post(self,request):
         user_name=request.data['nom']
@@ -147,11 +148,14 @@ class ResultView(APIView):
             message="Bravo! Vous avez réussi le quiz "
         else:
             message="Désolé! Vous n'avez pas réussi le quiz "
+        
+       
         return Response({
             "score":score,
             "user_name":user.name,
             "message":message,
             "nbre_questions":quiz.nbre_questions,
+            
 
         })
 class ScenarioCreateView(generics.CreateAPIView):
@@ -205,12 +209,39 @@ class StatistiquesAdminAPIView(APIView):
             "phishing": Scenario.objects.filter(reponse=True).count(),
             "non_phishing": Scenario.objects.filter(reponse=False).count()
         }
+
+        tests_par_mois = (
+            Stat.objects.annotate(month=TruncMonth('date_test'))
+            .values('month')
+            .annotate(total_tests=Count('id'))
+            .order_by('month')
+        )
+
+        taux_reussite_par_mois = (
+            Stat.objects.annotate(month=TruncMonth('date_test'))
+            .values('month')
+            .annotate(taux_reussite=Avg('pourcentage'))
+            .order_by('month')
+        )
+        labels = []
+        tests_data = []
+        taux_data = []
+
+        for entry in tests_par_mois:
+            labels.append(entry['month'].strftime('%b %Y'))  # Format: "Jan 2024"
+            tests_data.append(entry['total_tests'])
+
+        for entry in taux_reussite_par_mois:
+            taux_data.append(entry['taux_reussite'])
         data = {
             "total_tests": total_tests,
             "total_scenarios": total_scenarios,
             "moyenne_correctes": moyenne_correctes,
             "taux_reussite": taux_reussite,
-            "repartition": repartition
+            "repartition": repartition,
+            "labels": labels,  # Mois (X-axis)
+            "tests_data": tests_data,  # Nombre de tests par mois (Bar Chart)
+            "taux_data": taux_data  #
         }
         return Response(data)
     

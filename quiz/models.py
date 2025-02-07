@@ -6,6 +6,7 @@ class User(models.Model):
     name = models.CharField(max_length=100)
     email= models.EmailField(max_length=100)
     score=models.IntegerField()
+    
 
 class Scenario(models.Model):
     id = models.AutoField(primary_key=True)
